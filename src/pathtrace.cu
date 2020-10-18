@@ -102,7 +102,7 @@ static PathSegment* dev_paths = NULL;
 static ShadeableIntersection* dev_intersections = NULL;
 static GBufferPixel* dev_gBuffer = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
-// ...
+static GBufferPixelVec3* dev_gBufferVec3 = NULL;
 static ShadeableIntersection* dev_firstIntersections = NULL; // Cache first bounce of first iter to be re-use in other iters
 static Triangle* dev_tris = NULL; // Store triangle information for meshes
 static glm::vec2* dev_samples = NULL;
@@ -155,6 +155,7 @@ void pathtraceInit(Scene* scene) {
   cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
   cudaMalloc(&dev_gBuffer, pixelcount * sizeof(GBufferPixel));
+  cudaMalloc(&dev_gBufferVec3, pixelcount * sizeof(GBufferPixelVec3));
 
   // TODO: initialize any extra device memeory you need
   cudaMalloc(&dev_firstIntersections, pixelcount * sizeof(ShadeableIntersection));
@@ -181,6 +182,7 @@ void pathtraceFree() {
   cudaFree(dev_materials);
   cudaFree(dev_intersections);
   cudaFree(dev_gBuffer);
+  cudaFree(dev_gBufferVec3);
   // TODO: clean up any extra device memory you created
   cudaFree(dev_tris);
   cudaFree(dev_firstIntersections);
@@ -379,6 +381,10 @@ __global__ void shadeMaterial(
   }
 }
 
+//---------------------------------------------------------------------
+//--------------------GENERATE G-BUFFERS-------------------------------
+//---------------------------------------------------------------------
+
 __global__ void generateGBuffer(
   int num_paths,
   ShadeableIntersection* shadeableIntersections,
@@ -390,6 +396,36 @@ __global__ void generateGBuffer(
     gBuffer[idx].t = shadeableIntersections[idx].t;
   }
 }
+
+__global__ void generateGBufferPositions(
+  int num_paths,
+  ShadeableIntersection* shadeableIntersections,
+  PathSegment* pathSegments,
+  GBufferPixelVec3* gBuffer) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num_paths)
+  {
+    Ray ray = pathSegments[idx].ray;
+    glm::vec3 pos = ray.origin + ray.direction * shadeableIntersections[idx].t;
+    gBuffer[idx].v = pos;
+  }
+}
+
+__global__ void generateGBufferNormals(
+  int num_paths,
+  ShadeableIntersection* shadeableIntersections,
+  PathSegment* pathSegments,
+  GBufferPixelVec3* gBuffer) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num_paths)
+  {
+    gBuffer[idx].v = shadeableIntersections[idx].surfaceNormal;
+  }
+}
+
+//---------------------------------------------------------------------
+//-------------------- FINAL GATHER -----------------------------------
+//---------------------------------------------------------------------
 
 // Add the current iteration's output to the overall image
 __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iterationPaths)
@@ -556,6 +592,7 @@ void pathtrace(int frame, int iter) {
 
   // Empty gbuffer
   cudaMemset(dev_gBuffer, 0, pixelcount * sizeof(GBufferPixel));
+  cudaMemset(dev_gBufferVec3, 0, pixelcount * sizeof(GBufferPixel));
 
   // clean shading chunks
   cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));

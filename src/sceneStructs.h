@@ -94,3 +94,7 @@ struct ShadeableIntersection {
 struct GBufferPixel {
 	float t;
 };
+
+struct GBufferPixelVec3 {
+	glm::vec3 v;
+};
