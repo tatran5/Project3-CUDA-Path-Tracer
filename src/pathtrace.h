@@ -7,6 +7,6 @@ enum class DisplayType {DEFAULT, GBUFFER_DEFAULT, GBUFFER_NORMAL, GBUFFER_POSITI
 
 void pathtraceInit(Scene *scene);
 void pathtraceFree();
-void pathtrace(int frame, int iteration);
-void showGBuffer(uchar4* pbo);
+void pathtrace(int frame, int iteration, DisplayType displayType);
+void showGBuffer(uchar4* pbo, DisplayType displayType);
 void showImage(uchar4* pbo, int iter);

@@ -25,7 +25,7 @@ float ui_colorWeight = 0.45f;
 float ui_normalWeight = 0.35f;
 float ui_positionWeight = 0.2f;
 bool ui_saveAndExit = false;
-
+DisplayType displayType = DisplayType::DEFAULT;
 static bool camchanged = true;
 static float dtheta = 0, dphi = 0;
 static glm::vec3 cammove;
@@ -160,11 +160,12 @@ void runCuda() {
 
 		// execute the kernel
 		int frame = 0;
-		pathtrace(frame, iteration);
+		pathtrace(frame, iteration, displayType);
 	}
 
 	if (ui_showGbuffer) {
-		showGBuffer(pbo_dptr);
+		displayType = DisplayType::GBUFFER_DEFAULT;
+		showGBuffer(pbo_dptr, displayType);
 	}
 	else {
 		showImage(pbo_dptr, iteration);
