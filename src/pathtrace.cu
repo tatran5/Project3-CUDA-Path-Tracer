@@ -89,11 +89,18 @@ __global__ void gbufferVec3ToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixe
 
   if (x < resolution.x && y < resolution.y) {
     int index = x + (y * resolution.x);
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="pbo"></param>
+    /// <param name="resolution"></param>
+    /// <param name="gBuffer"></param>
+    /// <returns></returns>
     pbo[index].w = 0;
-    pbo[index].x = gBuffer[index].v[0];
-    pbo[index].y = gBuffer[index].v[1];
-    pbo[index].z = gBuffer[index].v[2];
+    float scalar = 32.f;
+    pbo[index].x = glm::clamp(glm::abs(gBuffer[index].v[0]) * scalar, 0.f, 255.f);
+    pbo[index].y = glm::clamp(glm::abs(gBuffer[index].v[1]) * scalar, 0.f, 255.f);
+    pbo[index].z = glm::clamp(glm::abs(gBuffer[index].v[2]) * scalar, 0.f, 255.f);
   }
 }
 
@@ -727,7 +734,7 @@ void showGBuffer(uchar4 * pbo, DisplayType displayType) {
     (cam.resolution.x + blockSize2d.x - 1) / blockSize2d.x,
     (cam.resolution.y + blockSize2d.y - 1) / blockSize2d.y);
 
-  if (displayType == DisplayType::GBUFFER_DEFAULT) {
+    if (displayType == DisplayType::GBUFFER_DEFAULT) {
     gbufferToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBuffer);
   } else if (displayType == DisplayType::GBUFFER_NORMAL) {
     gbufferVec3ToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferNor);

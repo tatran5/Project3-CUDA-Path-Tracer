@@ -19,6 +19,8 @@ int ui_iterations = 0;
 int startupIterations = 0;
 int lastLoopIterations = 0;
 bool ui_showGbuffer = false;
+bool ui_showGbufferPos = false;
+bool ui_showGbufferNor = false;
 bool ui_denoise = false;
 int ui_filterSize = 80;
 float ui_colorWeight = 0.45f;
@@ -165,6 +167,8 @@ void runCuda() {
 
 	if (ui_showGbuffer) {
 		displayType = DisplayType::GBUFFER_DEFAULT;
+		displayType = ui_showGbufferNor ? DisplayType::GBUFFER_NORMAL : displayType;
+		displayType = ui_showGbufferPos ? DisplayType::GBUFFER_POSITION : displayType;
 		showGBuffer(pbo_dptr, displayType);
 	}
 	else {
