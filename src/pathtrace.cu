@@ -183,6 +183,7 @@ __global__ void normalizeFilter(int filterSize, float* filter, float sum) {
 	}
 }
 
+
 // Wraps around the two kernels above to generate a gaussian filter
 void generateGaussianFilter() {
 	const dim3 blockSize2d(8, 8);
@@ -592,7 +593,7 @@ __global__ void updateRaysForDepthOfField(
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-void pathtrace(int frame, int iter, DisplayType displayType) {
+void pathtrace(int frame, int iter, DisplayType displayType, float cPhi, float nPhi, float pPhi) {
 	const int traceDepth = 10;// hst_scene->state.traceDepth;
 	const Camera& cam = hst_scene->state.camera;
 	const int pixelcount = cam.resolution.x * cam.resolution.y;

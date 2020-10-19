@@ -162,7 +162,7 @@ void runCuda() {
 
 		// execute the kernel
 		int frame = 0;
-		pathtrace(frame, iteration, displayType);
+		pathtrace(frame, iteration, displayType, ui_colorWeight, ui_normalWeight, ui_positionWeight);
 	}
 
 	if (ui_showGbuffer) {
