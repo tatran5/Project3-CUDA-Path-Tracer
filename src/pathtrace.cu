@@ -82,7 +82,7 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
 // ----------------- GBUFFER TO PBO -----------------------------
 // --------------------------------------------------------------
 
-__global__ void gbufferVec3ToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixelVec3* gBuffer) {
+__global__ void gbufferVec3TestToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixelVec3* gBuffer) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -102,6 +102,22 @@ __global__ void gbufferVec3ToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixe
 		pbo[index].z = glm::clamp(glm::abs(gBuffer[index].v[2]) * scalar, 0.f, 255.f);
 	}
 }
+
+__global__ void gbufferVec3ToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixelVec3* gBuffer) {
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	if (x < resolution.x && y < resolution.y) {
+		int index = x + (y * resolution.x);
+		
+		glm::vec3 gBufferVal = gBuffer[index].v;
+		pbo[index].w = 0;
+		pbo[index].x = gBufferVal[0];
+		pbo[index].y = gBufferVal[1];
+		pbo[index].z = gBufferVal[2];
+	}
+}
+
 
 __global__ void gbufferToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixel* gBuffer) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -451,6 +467,16 @@ __global__ void generateGBufferPositions(
 	}
 }
 
+__global__ void generateGBufferColors(int nPaths, GBufferPixelVec3* gBuffer, const glm::vec3* img)
+{
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+	if (index < nPaths)
+	{
+		gBuffer[index].v = 255.f * img[index];
+	}
+}
+
 __global__ void generateGBufferNormals(
 	int num_paths,
 	ShadeableIntersection* shadeableIntersections,
@@ -475,7 +501,8 @@ __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iteration
 	if (index < nPaths)
 	{
 		PathSegment iterationPath = iterationPaths[index];
-		image[iterationPath.pixelIndex] += iterationPath.color;
+		glm::vec3 col = iterationPath.color;
+		image[iterationPath.pixelIndex] += col;
 	}
 }
 
@@ -662,7 +689,7 @@ void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-void pathtrace(int frame, int iter, DisplayType displayType, float cPhi, float nPhi, float pPhi) {
+void pathtrace(int frame, int iter, DisplayType displayType, int filterSize, float cPhi, float nPhi, float pPhi) {
 	const int traceDepth = 10;// hst_scene->state.traceDepth;
 	const Camera& cam = hst_scene->state.camera;
 	const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -732,6 +759,8 @@ void pathtrace(int frame, int iter, DisplayType displayType, float cPhi, float n
 	cudaMemset(dev_gBuffer, 0, pixelcount * sizeof(GBufferPixel));
 	cudaMemset(dev_gBufferPos, 0, pixelcount * sizeof(GBufferPixelVec3));
 	cudaMemset(dev_gBufferNor, 0, pixelcount * sizeof(GBufferPixelVec3));
+	cudaMemset(dev_gBufferCol, 0, pixelcount * sizeof(GBufferPixelVec3));
+	cudaMemset(dev_gBufferCol1, 0, pixelcount * sizeof(GBufferPixelVec3));
 
 	// clean shading chunks
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -812,14 +841,18 @@ void pathtrace(int frame, int iter, DisplayType displayType, float cPhi, float n
 			dev_paths,
 			dev_materials
 			);
+
 		dev_path_end = thrust::stable_partition(thrust::device, dev_paths, dev_path_end, pathIsAlive());
 		num_paths = dev_path_end - dev_paths;
+		
+
 		iterationComplete = num_paths == 0;
 	}
 
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
 	finalGather << <numBlocksPixels, blockSize1d >> > (pixelcount, dev_image, dev_paths);
+	generateGBufferColors << < numBlocksPixels, blockSize1d >> > (pixelcount, dev_gBufferCol, dev_image);
 
 #if TIMEPATHTRACE
 	double ms = (double)std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - timePathTrace).count();
@@ -845,10 +878,13 @@ void showGBuffer(uchar4* pbo, DisplayType displayType) {
 		gbufferToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBuffer);
 	}
 	else if (displayType == DisplayType::GBUFFER_NORMAL) {
-		gbufferVec3ToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferNor);
+		gbufferVec3TestToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferNor);
 	}
 	else if (displayType == DisplayType::GBUFFER_POSITION) {
-		gbufferVec3ToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferPos);
+		gbufferVec3TestToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferPos);
+	} 
+	else if (displayType == DisplayType::GBUFFER_COLOR) {
+		gbufferVec3ToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, dev_gBufferCol);
 	}
 }
 
