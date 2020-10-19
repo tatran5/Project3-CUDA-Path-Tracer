@@ -119,6 +119,54 @@ __global__ void gbufferToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixel* g
   }
 }
 
+//---------------------------------------------------------------------
+//----------- GAUSSIAN FILTER GENERATION ------------------------------
+//---------------------------------------------------------------------
+
+__global__ void generateGaussianFilterNotNormalized(int filterSize, float* filter) {
+  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if (x < filterSize && y < filterSize) {
+    float sigma = 1.f; // Intialising standard deviation to 1.0 
+    float  s = 2.f * sigma * sigma;
+    int index = x + (y * filterSize);
+    int halfFilterSize = filterSize / 2;
+    // Adjusted the x and y index so that the center of the filter is 
+    // at coordinate (0, 0) instead of (halfFilterSize, halfFilterSize)
+    int newX = x - halfFilterSize;
+    int newY = y - halfFilterSize;
+    float r = glm::sqrt(newX * newX + newY * newY);
+    filter[index] = glm::exp(-(r * r) / s) / (glm::half_pi<float>() * s);
+  }
+}
+
+__global__ void normalizeFilter(int filterSize, float* filter, float sum) {
+  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if (x < filterSize && y < filterSize) {
+    int index = x + (y * filterSize);
+    filter[index] /= sum;
+  }
+}
+
+// Wraps around the two kernels above to generate a gaussian filter
+void createGaussianFilter(int filterSize, float* filter) {
+  const dim3 blockSize2d(8, 8);
+  const dim3 blocksPerGrid2d(
+    (filterSize + blockSize2d.x - 1) / blockSize2d.x,
+    (filterSize + blockSize2d.y - 1) / blockSize2d.y);
+  generateGaussianFilterNotNormalized << <blocksPerGrid2d, blockSize >> > (filterSize, filter);
+  float sumGaussianNotNormalized = 
+    thrust::reduce(thrust::host, filter, filter + filterSize * filterSize, 0);
+  normalizeFilter(filterSize, filter, sumGaussianNotNormalized);
+}
+
+//---------------------------------------------------------------------
+//---------------------------- VARIABLES ------------------------------
+//---------------------------------------------------------------------
+
 static Scene* hst_scene = NULL;
 static glm::vec3* dev_image = NULL;
 static Geom* dev_geoms = NULL;
