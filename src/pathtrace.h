@@ -36,5 +36,8 @@ void pathtrace(int frame, int iteration, DisplayType displayType, int filterSize
 void showGBuffer(uchar4* pbo, DisplayType displayType);
 void showImage(uchar4* pbo, int iter);
 
-void aTrousWaveletFilter(int filterSize, int camResX, int camResY, float cPhi, float nPhi, float pPhi); 
+void aTrousWaveletFilter(int filterSize, int camResX, int camResY, 
+	GBufferPixelVec3* gbufferPos, GBufferPixelVec3* gbufferNor,
+	GBufferPixelVec3* gbufferCol, GBufferPixelVec3* gbufferCol1, 
+	float cPhi, float nPhi, float pPhi);
 void generateGaussianFilter();
