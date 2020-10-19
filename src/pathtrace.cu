@@ -5,7 +5,6 @@
 #include <thrust/random.h>
 #include <thrust/remove.h>
 #include <thrust/partition.h>
-#include <chrono>
 #include <iostream>
 #include <iomanip>
 
@@ -118,34 +117,6 @@ __global__ void gbufferToPBO(uchar4* pbo, glm::ivec2 resolution, GBufferPixel* g
 		pbo[index].z = timeToIntersect;
 	}
 }
-
-//---------------------------------------------------------------------
-//---------------------------- VARIABLES ------------------------------
-//---------------------------------------------------------------------
-
-static Scene* hst_scene = NULL;
-static glm::vec3* dev_image = NULL;
-static Geom* dev_geoms = NULL;
-static Material* dev_materials = NULL;
-static PathSegment* dev_paths = NULL;
-static ShadeableIntersection* dev_intersections = NULL;
-static GBufferPixel* dev_gBuffer = NULL;
-static GBufferPixelVec3* dev_gBufferNor = NULL;
-static GBufferPixelVec3* dev_gBufferPos = NULL;
-static GBufferPixelVec3* dev_gBufferCol = NULL;
-static GBufferPixelVec3* dev_gBufferCol1 = NULL;
-static float* dev_gaussianFilter = NULL;
-static int gaussianFilterSize = 5;
-
-static ShadeableIntersection* dev_firstIntersections = NULL; // Cache first bounce of first iter to be re-use in other iters
-static Triangle* dev_tris = NULL; // Store triangle information for meshes
-static glm::vec2* dev_samples = NULL;
-
-static std::chrono::steady_clock::time_point timePathTrace; // Measure performance
-
-// Depth of field
-static float lensRadius = 0.5f;
-static float focalDist = 10.f;
 
 //---------------------------------------------------------------------
 //----------- GAUSSIAN FILTER GENERATION ------------------------------
@@ -583,6 +554,104 @@ __global__ void updateRaysForDepthOfField(
 	glm::vec3 newDirection = glm::normalize(pFocus - newOrigin);
 	pathSegments[index].ray.origin = newOrigin;
 	pathSegments[index].ray.direction = newDirection;
+}
+
+// ----------------------------------------------------------------------------------------------
+// ---------------------------- DENOISER --------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
+
+__global__ void test(
+	const GBufferPixelVec3* dataPos, const GBufferPixelVec3* dataNor,
+	const GBufferPixelVec3* dataCol, GBufferPixelVec3* dataCol1)
+{}
+
+__global__ void applySparseFilter(
+	int filterSize, float* filter,
+	const GBufferPixelVec3* dataPos, const GBufferPixelVec3* dataNor,
+	const GBufferPixelVec3* dataCol, GBufferPixelVec3* dataCol1,
+	int offset, float cPhi, float nPhi, float pPhi,
+	int camResX, int camResY)
+{
+
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	if (x < camResX && y < camResY) {
+		int indexPix = x + (y * camResX);
+
+		glm::vec3 sum = glm::vec3(0.f);
+		glm::vec3 cval = dataCol[indexPix].v;
+		glm::vec3 nval = dataNor[indexPix].v;
+		glm::vec3 pval = dataPos[indexPix].v;
+
+		float cum_w = 0.f;
+		int halfFilterSize = filterSize / 2;
+		int pixSampledCount = 0;
+		for (int unfactoredOffsetX = -halfFilterSize; unfactoredOffsetX <= halfFilterSize; unfactoredOffsetX++) {
+			for (int unfactoredOffsetY = -halfFilterSize; unfactoredOffsetY <= halfFilterSize; unfactoredOffsetY++) {
+				// Get the location of the sampled pixel
+				int sampleX = x + unfactoredOffsetX * offset;
+				int sampleY = y + unfactoredOffsetY * offset;
+
+				if (sampleX >= 0 && sampleX < camResX && sampleY >= 0 && sampleY < camResY) {
+					pixSampledCount++;
+					int indexPixSample = sampleX + sampleY * camResX;
+
+					// Find the color weight by this pixel
+					glm::vec3 ctmp = dataCol[indexPixSample].v;
+					glm::vec3 t = cval - ctmp;
+					float dist2 = glm::dot(t, t);
+					float cwSample = glm::min(glm::exp(-dist2 / cPhi), 1.f);
+
+					glm::vec3 ntmp = dataNor[indexPixSample].v;
+					t = nval - ntmp;
+					dist2 = glm::max(glm::dot(t, t) / (offset * offset), 0.f);
+					float nwSample = glm::min(glm::exp(-dist2 / nPhi), 1.f);
+
+					glm::vec3 ptmp = dataPos[indexPixSample].v;
+					t = pval - ptmp;
+					dist2 = glm::dot(t, t);
+					float pwSample = glm::min(glm::exp(-dist2 / pPhi), 1.f);
+
+					float weight = cwSample * nwSample * pwSample;
+
+					int filterPosX = unfactoredOffsetX + halfFilterSize;
+					int filterPosY = unfactoredOffsetY + halfFilterSize;
+					int filterIdx = filterPosX + filterPosY * filterSize;
+					sum += ctmp * weight * filter[filterIdx];
+					cum_w += weight * filter[filterIdx];
+				}
+			}
+		}
+		dataCol1[indexPix].v = sum / cum_w;
+	}
+}
+
+// Filter the image with iterations
+void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
+	float cPhi, float nPhi, float pPhi) 
+{
+	int blurIteration = filterSize / gaussianFilterSize;
+	int offset = 1;
+
+	const dim3 blockSize2d(8, 8);
+	const dim3 blocksPerGrid2d(
+		(camResX + blockSize2d.x - 1) / blockSize2d.x,
+		(camResY + blockSize2d.y - 1) / blockSize2d.y);
+
+	for (int i = 0; i < blurIteration; i++) {
+		/*applySparseFilter << <blocksPerGrid2d, blockSize2d >> > 
+			(gaussianFilterSize, dev_gaussianFilter,
+			dev_gbufferPos, dev_gbufferNor,
+			dev_gbufferCol, dev_gbufferCol1,
+			offset, cPhi, nPhi, pPhi, camResX, camResY);*/
+		//test << <blocksPerGrid2d, blockSize2d >> > (dev_gbufferPos, dev_gbufferNor, dev_gbufferCol, dev_gbufferCol1);
+		// Ping-pong the two color buffers
+		GBufferPixelVec3* temp = dev_gBufferCol;
+		dev_gBufferCol = dev_gBufferCol1;
+		dev_gBufferCol1 = temp;
+		offset *= 2;
+	}
 }
 
 // ----------------------------------------------------------------------------------------------
