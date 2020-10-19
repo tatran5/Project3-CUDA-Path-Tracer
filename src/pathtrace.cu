@@ -132,6 +132,8 @@ static ShadeableIntersection* dev_intersections = NULL;
 static GBufferPixel* dev_gBuffer = NULL;
 static GBufferPixelVec3* dev_gBufferNor = NULL;
 static GBufferPixelVec3* dev_gBufferPos = NULL;
+static GBufferPixelVec3* dev_gBufferCol = NULL;
+static GBufferPixelVec3* dev_gBufferCol1 = NULL;
 static float* dev_gaussianFilter = NULL;
 static int gaussianFilterSize = 5;
 
@@ -223,16 +225,16 @@ void pathtraceInit(Scene* scene) {
 	cudaMalloc(&dev_gBuffer, pixelcount * sizeof(GBufferPixel));
 	cudaMalloc(&dev_gBufferPos, pixelcount * sizeof(GBufferPixelVec3));
 	cudaMalloc(&dev_gBufferNor, pixelcount * sizeof(GBufferPixelVec3));
+	cudaMalloc(&dev_gBufferCol, pixelcount * sizeof(GBufferPixelVec3));
+	cudaMalloc(&dev_gBufferCol1, pixelcount * sizeof(GBufferPixelVec3));
 
 	int countGaussianFilterElm = gaussianFilterSize * gaussianFilterSize;
 	cudaMalloc(&dev_gaussianFilter, (countGaussianFilterElm) * sizeof(float));
 	generateGaussianFilter();
-	float* testGaussianFilter = new float[countGaussianFilterElm];
-	cudaMemcpy(testGaussianFilter, dev_gaussianFilter, countGaussianFilterElm * sizeof(float), cudaMemcpyDeviceToHost);
 
 	cudaMalloc(&dev_firstIntersections, pixelcount * sizeof(ShadeableIntersection));
 	cudaMemset(dev_firstIntersections, 0, pixelcount * sizeof(ShadeableIntersection));
-	delete(testGaussianFilter);
+
 	/*const dim3 blockSize2d(8, 8);
 	const dim3 blocksPerGrid2d(
 		(samples1D + blockSize2d.x - 1) / blockSize2d.x,
@@ -250,6 +252,8 @@ void pathtraceFree() {
 	cudaFree(dev_gBuffer);
 	cudaFree(dev_gBufferPos);
 	cudaFree(dev_gBufferNor);
+	cudaFree(dev_gBufferCol);
+	cudaFree(dev_gBufferCol1);
 	cudaFree(dev_gaussianFilter);
 	cudaFree(dev_tris);
 	cudaFree(dev_firstIntersections);
