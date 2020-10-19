@@ -10,3 +10,4 @@ void pathtraceFree();
 void pathtrace(int frame, int iteration, DisplayType displayType);
 void showGBuffer(uchar4* pbo, DisplayType displayType);
 void showImage(uchar4* pbo, int iter);
+void generateGaussianFilter();
