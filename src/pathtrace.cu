@@ -480,13 +480,15 @@ __global__ void generateGBufferNormals(
 }
 
 
-__global__ void generateGBufferColors(int nPaths, GBufferPixelVec3* gBuffer, const glm::vec3* img)
+__global__ void generateGBufferColors(int nPaths, GBufferPixelVec3* gBuffer, PathSegment* iterationPaths)
 {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
 	if (index < nPaths)
 	{
-		gBuffer[index].v = img[index];
+		PathSegment iterationPath = iterationPaths[index];
+		glm::vec3 col = iterationPath.color;
+		gBuffer[iterationPath.pixelIndex].v = col;
 	}
 }
 
@@ -512,6 +514,17 @@ __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iteration
 		PathSegment iterationPath = iterationPaths[index];
 		glm::vec3 col = iterationPath.color;
 		image[iterationPath.pixelIndex] += col;
+	}
+}
+
+// Add the current iteration's output to the overall image
+__global__ void finalGatherWithDenoise(int nPaths, glm::vec3* image, GBufferPixelVec3* curIterationDenoised)
+{
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+	if (index < nPaths)
+	{
+		image[index] += curIterationDenoised[index].v;
 	}
 }
 
@@ -649,11 +662,12 @@ __global__ void applySparseFilter(
 					dist2 = glm::dot(t, t);
 					float pwSample = glm::min(glm::exp(-dist2 / pPhi), 1.f);
 
-					float weight = cwSample * nwSample * pwSample;
+					float weight = cwSample + nwSample + pwSample;
 
 					int filterPosX = unfactoredOffsetX + halfFilterSize;
 					int filterPosY = unfactoredOffsetY + halfFilterSize;
 					int filterIdx = filterPosX + filterPosY * filterSize;
+
 					sum += ctmp * weight * filter[filterIdx];
 					cum_w += weight * filter[filterIdx];
 				}
@@ -669,7 +683,7 @@ void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
 	GBufferPixelVec3* gbufferCol, GBufferPixelVec3* gbufferCol1,
 	float cPhi, float nPhi, float pPhi) 
 {
-	int blurIteration = filterSize / gaussianFilterSize;
+	int blurIteration = (int)(glm::log2(filterSize / 2) + 1.f); 
 	int offset = 1;
 
 	const dim3 blockSize2d(8, 8);
@@ -677,16 +691,19 @@ void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
 		(camResX + blockSize2d.x - 1) / blockSize2d.x,
 		(camResY + blockSize2d.y - 1) / blockSize2d.y);
 
-	for (int i = 0; i < blurIteration; i++) {
+	//for (int i = 0; i < blurIteration; i++) { //TODO
+	for (int i = 0; i < 1; i++) {
 		applySparseFilter << <blocksPerGrid2d, blockSize2d >> > 
 			(gaussianFilterSize, dev_gaussianFilter,
 			gbufferPos, gbufferNor,
 			gbufferCol, gbufferCol1,
 			offset, cPhi, nPhi, pPhi, camResX, camResY);
+	
 		// Ping-pong the two color buffers
 		GBufferPixelVec3* temp = dev_gBufferCol;
 		dev_gBufferCol = dev_gBufferCol1;
 		dev_gBufferCol1 = temp;
+
 		offset *= 2;
 	}
 }
@@ -861,14 +878,16 @@ void pathtrace(int frame, int iter, DisplayType displayType, int filterSize, flo
 
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
-	finalGather << <numBlocksPixels, blockSize1d >> > (pixelcount, dev_image, dev_paths);
-	generateGBufferColors << < numBlocksPixels, blockSize1d >> > (pixelcount, dev_gBufferCol, dev_image);
 	if (displayType == DisplayType::DENOISE) {
+		generateGBufferColors << < numBlocksPixels, blockSize1d >> > (pixelcount, dev_gBufferCol, dev_paths);
 		aTrousWaveletFilter(filterSize, cam.resolution.x, cam.resolution.y,
 			dev_gBufferPos, dev_gBufferNor, dev_gBufferCol, dev_gBufferCol1, cPhi, nPhi, pPhi);
-		copyBufferToImage << < numBlocksPixels, blockSize1d >> >(pixelcount, dev_gBufferCol, dev_image)
+		finalGatherWithDenoise << <numBlocksPixels, blockSize1d >> > (pixelcount, dev_image, dev_gBufferCol);
 	}
-
+	else {
+		finalGather << <numBlocksPixels, blockSize1d >> > (pixelcount, dev_image, dev_paths);
+	}
+	
 #if TIMEPATHTRACE
 	double ms = (double)std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - timePathTrace).count();
 	std::cout << ms << std::endl;
