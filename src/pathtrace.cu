@@ -20,7 +20,7 @@
 #define ANTIALIASING 1
 #define TIMEPATHTRACE 0 // Measure performance
 #define DEPTHOFFIELD 0
-#define MOTIONBLUR 1
+#define MOTIONBLUR 0
 
 #define SORTPATHSBYMATERIAL 1 // Improve performance
 #define CACHEFIRSTINTERSECTIONS 0 // Improve performance
@@ -281,7 +281,10 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 #ifdef MOTIONBLUR
 		thrust::uniform_real_distribution<float> u01(0, 1);
 		float interpolateBlurVal = u01(rng);
-		glm::vec3 blurredView = cam.view - cam.move * interpolateBlurVal;
+		glm::vec3 blurredView = cam.view;
+		if (MOTIONBLUR) {
+			blurredView -= cam.move * interpolateBlurVal;
+		}
 		segment.ray.direction = glm::normalize(blurredView
 			- cam.right * cam.pixelLength.x * ((float)x + addedJitter0 - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * ((float)y + addedJitter1 - (float)cam.resolution.y * 0.5f)
@@ -662,25 +665,26 @@ __global__ void applySparseFilter(
 					dist2 = glm::dot(t, t);
 					float pwSample = glm::min(glm::exp(-dist2 / pPhi), 1.f);
 
-					float weight = cwSample + nwSample + pwSample;
+					float weight = cwSample * nwSample * pwSample;
 
 					int filterPosX = unfactoredOffsetX + halfFilterSize;
 					int filterPosY = unfactoredOffsetY + halfFilterSize;
 					int filterIdx = filterPosX + filterPosY * filterSize;
-
 					sum += ctmp * weight * filter[filterIdx];
 					cum_w += weight * filter[filterIdx];
 				}
 			}
 		}
-		dataCol1[indexPix].v = sum / cum_w;
+		if (cum_w > 0) {
+			dataCol1[indexPix].v = sum / cum_w;
+		}
 	}
 }
 
 // Filter the image with iterations
 void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
-	GBufferPixelVec3* gbufferPos, GBufferPixelVec3* gbufferNor,
-	GBufferPixelVec3* gbufferCol, GBufferPixelVec3* gbufferCol1,
+	GBufferPixelVec3* gBufferPos, GBufferPixelVec3* gBufferNor,
+	GBufferPixelVec3* gBufferCol, GBufferPixelVec3* gBufferCol1,
 	float cPhi, float nPhi, float pPhi) 
 {
 	int blurIteration = (int)(glm::log2(filterSize / 2) + 1.f); 
@@ -691,18 +695,17 @@ void aTrousWaveletFilter(int filterSize, int camResX, int camResY,
 		(camResX + blockSize2d.x - 1) / blockSize2d.x,
 		(camResY + blockSize2d.y - 1) / blockSize2d.y);
 
-	//for (int i = 0; i < blurIteration; i++) { //TODO
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < blurIteration; i++) { 
 		applySparseFilter << <blocksPerGrid2d, blockSize2d >> > 
 			(gaussianFilterSize, dev_gaussianFilter,
-			gbufferPos, gbufferNor,
-			gbufferCol, gbufferCol1,
+			gBufferPos, gBufferNor,
+			gBufferCol, gBufferCol1,
 			offset, cPhi, nPhi, pPhi, camResX, camResY);
 	
 		// Ping-pong the two color buffers
-		GBufferPixelVec3* temp = dev_gBufferCol;
-		dev_gBufferCol = dev_gBufferCol1;
-		dev_gBufferCol1 = temp;
+		GBufferPixelVec3* temp = gBufferCol;
+		gBufferCol = gBufferCol1;
+		gBufferCol1 = temp;
 
 		offset *= 2;
 	}
