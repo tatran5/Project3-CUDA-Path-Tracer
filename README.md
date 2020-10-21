@@ -47,9 +47,13 @@ This basic denoiser does have some artifacts such as blotching (circular blurs o
 ### Interaction with different materials
 Denoiser works well on diffuse material because diffuse material is supposed to look uniform and smoothed out, and the denoiser attempts to do just that. However, for reflective and refractive surfaces, this is not guaranteed because the denoising process depends on the normal and position buffers. Hence, reflection on objects can be blurry (which can be enhanced by adjusting some combination of weights) because the normals of the reflections are just normals of the objects reflecting, not the normals of the objects being reflected. The same explaination can be applied for position buffer as well. As a result, the base image without the denoiser among the renders below has the sharpest reflection
 
-|Base image (no denoiser)| Denoised image | Normal buffer | Position buffer|
-|---|---|---|
-|![](img/denoiser_reflection_baseline.png =150x150)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_normal_buffer.png =150x150)|![](img/denoiser_position_buffer.png =150x150)|
+|Base image (no denoiser)| Denoised image |
+|---|---|
+|![](img/denoiser_reflection_baseline.png)|![](img/denoiser_blur_reflection.png)|
+
+|Normal buffer | Position buffer|
+|---|---|
+|![](img/denoiser_normal_buffer.png)|![](img/denoiser_position_buffer.png)|
 
 
 
