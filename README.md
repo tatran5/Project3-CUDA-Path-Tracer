@@ -28,7 +28,7 @@ Here are some results of my implementation.
 |---|
 |![](img/denoiser_various_filters.png)|
 
-## Visual Issues
+## Performance Analysis
 
 ### Blurring edges
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
@@ -54,8 +54,9 @@ Denoiser works well on diffuse material because diffuse material is supposed to 
 |---|---|---|---|
 |![](img/denoiser_reflection_baseline.png)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_reflection_normal_buffer.png)|![](img/denoiser_reflection_position_buffer.png)|
 
-## Performance analysis
-![](img/denoiser_runtime.png)
+### Runtime
+![](img/denoiser_runtime_filter.png)
+![](img/denoiser_resolution.png)
 
 As the filter size increases, there is a slight additional runtime. A larger filter size implies that for each pixel in the image, we have to consider more surrounding pixels. 
 
