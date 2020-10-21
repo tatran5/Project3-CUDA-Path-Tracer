@@ -49,7 +49,7 @@ Denoiser works well on diffuse material because diffuse material is supposed to 
 
 |Base image (no denoiser)| Denoised image | Normal buffer | Position buffer|
 |---|---|---|
-|![](img/denoiser_reflection_baseline.png)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_normal_buffer.png =150x150)|![](img/denoiser_position_buffer.png =150x150)|
+|![](img/denoiser_reflection_baseline.png =150x150)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_normal_buffer.png =150x150)|![](img/denoiser_position_buffer.png =150x150)|
 
 
 
