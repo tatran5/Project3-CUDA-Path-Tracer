@@ -51,14 +51,6 @@ Denoiser works well on diffuse material because diffuse material is supposed to 
 |---|---|---|---|
 |![](img/denoiser_reflection_baseline.png)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_reflection_normal_buffer.png)|![](img/denoiser_reflection_position_buffer.png)|
 
-
-
-|Normal buffer | Position buffer|
-|---|---|
-|![](img/denoiser_reflection_normal_buffer.png)|![](img/denoiser_reflection_position_buffer.png)|
-
-
-
 ## Performance analysis
 ![](img/denoiser_runtime.png)
 
