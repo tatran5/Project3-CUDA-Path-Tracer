@@ -8,7 +8,7 @@ CUDA Path Tracer
 * Tested on: Windows 10, i7-8750H @ 2.20GHz 22GB, GTX 1070
 
 ## Denoiser
-** Note: the capture of the real-time denoiser below is different from the actual renders (check later images for actual results of real-time denoiser **
+#### Note: the capture of the real-time denoiser below is different from the actual renders (check later images for actual results of real-time denoiser) ####
 ![](img/denoiser_record.gif)
 
 The denoiser in this project is based on the paper "Edge-Avoiding A-Trous Wavelet Transform for fast Global Illumination Filtering," by Dammertz, Sewtz, Hanika, and Lensch. You can find [the paper here](https://jo.dreggn.org/home/2010_atrous.pdf) The project also uses geometry buffers (G-buffers), particularly position, normal and color buffers,  to guid a smoothing filter.
