@@ -25,6 +25,8 @@ Here are some results of my implementation.
 |---|
 |![](img/denoiser_various_filters.png)|
 
+### Visual Issues
+
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
 
 |Denoiser 64x64 filter has both sharp and blurred edge|
@@ -41,7 +43,6 @@ This basic denoiser does have some artifacts such as blotching (circular blurs o
 |![](img/denoiser_blotching.PNG)|
 
 ### Performance analysis
-|Performange analysis graph|
 |---|
 |![](img/denoiser_runtime.png)|
 
