@@ -12,7 +12,7 @@ The denoiser in this project is based on the paper "Edge-Avoiding A-Trous Wavele
 
 |Left to right: position buffer, normal buffer.|
 |---|
-![](img/denoise_gbuffers.png)
+|![](img/denoiser_gbuffers.png)|
 
 Often times, a pure path tracer will result in noisy (or grainy) renders, like the last image above, which can be improved by applying a denoiser. A denoiser can help create a smoother appearance in the path trace image by blurring pixels for each pixel. 
 
@@ -20,8 +20,10 @@ However, if only a kernel is applied to smooth out the image, important features
 
 Another concern is a huge drag in performance if the blur filter size gets larger. Hence, instead of constructing a big filter corresponding to user's input, we can apply the filter on an image sparsely through multiple passes. The example [here](https://onedrive.live.com/view.aspx?resid=A6B78147D66DD722!95296&ithint=file%2cpptx&authkey=!AI_kS-xxETawwBw) helps explaining why it is more efficient to apply the filter sparsely under multipass. Basically, without the sparse application of the filter,for a 16x16 width/filter, there are 256 pixel reads for each pixel blurred. However, if A-Trous was applied, there are only 75 pixel reads per pixel blurred.
 
-Here are some results of my implementation. Left to right: no denoising, denoise with 32x32 filter, denoise with 64x64 filter
-![](img/denoiser_various_filters.png)
+Here are some results of my implementation. 
+|Left to right: no denoising, denoise with 32x32 filter, denoise with 64x64 filter|
+|---|
+|![](img/denoiser_various_filters.png)|
 
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
 
