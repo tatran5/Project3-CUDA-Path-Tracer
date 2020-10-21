@@ -56,7 +56,7 @@ Denoiser works well on diffuse material because diffuse material is supposed to 
 
 ### Runtime
 ![](img/denoiser_runtime_filter.png)
-![](img/denoiser_resolution.png)
+![](img/denoiser_runtime_resolution.png)
 
 As the filter size increases, there is a slight additional runtime. A larger filter size implies that for each pixel in the image, we have to consider more surrounding pixels. 
 
