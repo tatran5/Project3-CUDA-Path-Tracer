@@ -38,7 +38,7 @@ As mentioned, the method helps preserving edges of objects. However, there can b
 This basic denoiser does have some artifacts such as blotching (circular blurs on objects.) Ideally, it should be really smoothed out. However, the blotching effect does gets somewhat better as the filter size increases.
 |Blotchy artifacts|
 |---|
-|![](img/denoiser_blotching.png)|
+|![](img/denoiser_blotching.PNG)|
 
 ### Performance analysis
 |Performange analysis graph|
