@@ -7,7 +7,7 @@ CUDA Path Tracer
   * [LinkedIn](https://www.linkedin.com/in/thy-tran-97a30b148/), [personal website](https://tatran5.github.io/), [email](thytran316@outlook.com)
 * Tested on: Windows 10, i7-8750H @ 2.20GHz 22GB, GTX 1070
 
-### Denoiser
+## Denoiser
 The denoiser in this project is based on the paper "Edge-Avoiding A-Trous Wavelet Transform for fast Global Illumination Filtering," by Dammertz, Sewtz, Hanika, and Lensch. You can find [the paper here](https://jo.dreggn.org/home/2010_atrous.pdf) The project also uses geometry buffers (G-buffers), particularly position, normal and color buffers,  to guid a smoothing filter.
 
 |Left to right: position buffer, normal buffer.|
@@ -25,8 +25,9 @@ Here are some results of my implementation.
 |---|
 |![](img/denoiser_various_filters.png)|
 
-### Visual Issues
+## Visual Issues
 
+### Blurring edges
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
 
 |Denoiser 64x64 filter has both sharp and blurred edge|
@@ -37,14 +38,23 @@ As mentioned, the method helps preserving edges of objects. However, there can b
 |---|
 |![](img/denoiser_70x70_various_weights.png)|
 
+### Blotching
 This basic denoiser does have some artifacts such as blotching (circular blurs on objects.) Ideally, it should be really smoothed out. However, the blotching effect does gets somewhat better as the filter size increases.
 |Blotchy artifacts|
 |---|
 |![](img/denoiser_blotching.PNG)|
 
-### Performance analysis
-|---|
-|![](img/denoiser_runtime.png)|
+### Interaction with different materials
+Denoiser works well on diffuse material because diffuse material is supposed to look uniform and smoothed out, and the denoiser attempts to do just that. However, for reflective and refractive surfaces, this is not guaranteed because the denoising process depends on the normal and position buffers. Hence, reflection on objects can be blurry (which can be enhanced by adjusting some combination of weights) because the normals of the reflections are just normals of the objects reflecting, not the normals of the objects being reflected. The same explaination can be applied for position buffer as well. As a result, the base image without the denoiser among the renders below has the sharpest reflection
+
+|Base image (no denoiser)| Denoised image | Normal buffer | Position buffer|
+|---|---|---|
+|![](img/denoiser_reflection_baseline.png)|![](img/denoiser_blur_reflection.png)|![](img/denoiser_normal_buffer.png)|![](img/denoiser_position_buffer.png)|
+
+
+
+## Performance analysis
+![](img/denoiser_runtime.png)
 
 As the filter size increases, there is a slight additional runtime. A larger filter size implies that for each pixel in the image, we have to consider more surrounding pixels. 
 
