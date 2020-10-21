@@ -10,7 +10,8 @@ CUDA Path Tracer
 ### Denoiser
 The denoiser in this project is based on the paper "Edge-Avoiding A-Trous Wavelet Transform for fast Global Illumination Filtering," by Dammertz, Sewtz, Hanika, and Lensch. You can find [the paper here](https://jo.dreggn.org/home/2010_atrous.pdf) The project also uses geometry buffers (G-buffers), particularly position, normal and color buffers,  to guid a smoothing filter.
 
-Left to right: position buffer, normal buffer.
+|Left to right: position buffer, normal buffer.|
+|---|
 ![](img/denoise_gbuffers.png)
 
 Often times, a pure path tracer will result in noisy (or grainy) renders, like the last image above, which can be improved by applying a denoiser. A denoiser can help create a smoother appearance in the path trace image by blurring pixels for each pixel. 
@@ -28,14 +29,19 @@ As mentioned, the method helps preserving edges of objects. However, there can b
 |---|
 |![](img/denoiser_64x64_blur_edge_anotate.png)|
 
-Left to right: high normal weight and low color weight, low normal weight and high color weight
-![](img/denoiser_70x70_various_weights.png)
+|Left to right: high normal weight and low color weight, low normal weight and high color weight|
+|---|
+|![](img/denoiser_70x70_various_weights.png)|
 
 This basic denoiser does have some artifacts such as blotching (circular blurs on objects.) Ideally, it should be really smoothed out. However, the blotching effect does gets somewhat better as the filter size increases.
-![](img/denoiser_blotching.png)
+|Blotchy artifacts|
+|---|
+|![](img/denoiser_blotching.png)|
 
 ### Performance analysis
-![](img/denoiser_runtime.png)
+|Performange analysis graph|
+|---|
+|![](img/denoiser_runtime.png)|
 
 As the filter size increases, there is a slight additional runtime. A larger filter size implies that for each pixel in the image, we have to consider more surrounding pixels. 
 
