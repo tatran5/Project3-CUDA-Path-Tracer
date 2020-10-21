@@ -33,9 +33,9 @@ Here are some results of my implementation.
 ### Blurring edges
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
 
-|Denoiser 64x64 filter has both sharp and blurred edge|
+|Denoiser 64x64 filter has both sharp and blurred edges|
 |---|
-|![](img/denoiser_64x64_blur_edge_anotate.png)|
+|![](img/denoiser_64x64.png)|
 
 |Left to right: high normal weight and low color weight, low normal weight and high color weight|
 |---|
