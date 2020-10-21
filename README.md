@@ -20,15 +20,16 @@ However, if only a kernel is applied to smooth out the image, important features
 Another concern is a huge drag in performance if the blur filter size gets larger. Hence, instead of constructing a big filter corresponding to user's input, we can apply the filter on an image sparsely through multiple passes. The example [here](https://onedrive.live.com/view.aspx?resid=A6B78147D66DD722!95296&ithint=file%2cpptx&authkey=!AI_kS-xxETawwBw) helps explaining why it is more efficient to apply the filter sparsely under multipass. Basically, without the sparse application of the filter,for a 16x16 width/filter, there are 256 pixel reads for each pixel blurred. However, if A-Trous was applied, there are only 75 pixel reads per pixel blurred.
 
 Here are some results of my implementation. Left to right: no denoising, denoise with 32x32 filter, denoise with 64x64 filter
-![CCCC](img/denoiser_various_filters.png)
+![](img/denoiser_various_filters.png)
 
 As mentioned, the method helps preserving edges of objects. However, there can be some blurring near edges too as below depending on the weight parameters. As one can expect, the higher the normal weight is, the sharper edges in the scene are.
 
-Denoiser 64x64 filter has both sharp and blurred edge
-![BBBB](img/denoiser_64x64_blur_edge_anotate.png)
+|Denoiser 64x64 filter has both sharp and blurred edge|
+|---|
+|![](img/denoiser_64x64_blur_edge_anotate.png)|
 
 Left to right: high normal weight and low color weight, low normal weight and high color weight
-![AAAA](img/denoiser_70x70_various_weights.png)
+![](img/denoiser_70x70_various_weights.png)
 
 This basic denoiser does have some artifacts such as blotching (circular blurs on objects.) Ideally, it should be really smoothed out. However, the blotching effect does gets somewhat better as the filter size increases.
 ![](img/denoiser_blotching.png)
