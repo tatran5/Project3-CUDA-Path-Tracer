@@ -9,6 +9,7 @@
 static std::string startTimeString;
 
 // For camera controls
+// TEST COMMENT
 static bool leftMousePressed = false;
 static bool rightMousePressed = false;
 static bool middleMousePressed = false;
