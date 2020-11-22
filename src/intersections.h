@@ -210,20 +210,42 @@ __host__ __device__ float meshIntersectionTest(const Triangle* tris, Geom mesh, 
 	if (!hitBoundingBox) return -1;
 
 	float t_min = INFINITY;
+	Triangle tri;
+
+	glm::vec3 bary;
+
 	for (int i = mesh.triangleIdxStart; i <= mesh.triangleIdxEnd; i++) {
-		Triangle tri = tris[i];
-		glm::vec3 bary;
-		if (glm::intersectRayTriangle(ro, rd, tri.v[0], tri.v[1], tri.v[2], bary)) {
-			float t = bary.z;
+		Triangle curTri = tris[i];
+		glm::vec3 curBary;
+		if (glm::intersectRayTriangle(ro, rd, curTri.v[0], curTri.v[1], curTri.v[2], curBary)) {
+			float t = curBary.z;
 			if (t < t_min) {
 				t_min = t;
-				normal = glm::normalize(glm::cross(tri.v[1] - tri.v[0], tri.v[2] - tri.v[0]));
+				tri = curTri;
+				bary = curBary;
 			}
 		}
 	}
 	if (t_min == INFINITY) {
 		return -1;
 	}
+
+	// Calculate normal
+	glm::vec3 n0 = tri.n[0];
+	glm::vec3 n1 = tri.n[1];
+	glm::vec3 n2 = tri.n[2];
+	if (glm::length(n0) == 0) n0 = glm::normalize(glm::cross(tri.v[1] - tri.v[0], tri.v[2] - tri.v[0]));
+	if (glm::length(n1) == 1) n1 = glm::normalize(glm::cross(tri.v[2] - tri.v[1], tri.v[0] - tri.v[1]));
+	if (glm::length(n2) == 2) n2 = glm::normalize(glm::cross(tri.v[0] - tri.v[2], tri.v[1] - tri.v[2]));
+
+	glm::vec3 baryPos = (1.f - bary.x - bary.y) * tri.v[0] + bary.x * tri.v[1] + bary.y * tri.v[2];
+	float S = 0.5f * glm::length(glm::cross(tri.v[0] - tri.v[1], tri.v[2] - tri.v[1]));
+	float S0 = 0.5f * glm::length(glm::cross(tri.v[1] - baryPos, tri.v[2] - baryPos));
+	float S1 = 0.5f * glm::length(glm::cross(tri.v[0] - baryPos, tri.v[2] - baryPos));
+	float S2 = 0.5f * glm::length(glm::cross(tri.v[0] - baryPos, tri.v[1] - baryPos));
+
+	// normal = glm::normalize(glm::cross(tri.v[1] - tri.v[0], tri.v[2] - tri.v[0]));
+	normal = glm::normalize(n0 * S0 / S + n1 * S1 / S + n2 * S2 / S);
 
 	outside = glm::dot(normal, rd) <= 0;
 	intersectionPoint = ro + rd * t_min;
